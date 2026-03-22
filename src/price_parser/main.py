@@ -1,0 +1,68 @@
+﻿from __future__ import annotations
+
+import asyncio
+import logging
+from pathlib import Path
+
+from aiogram import Bot
+
+from .bot import build_dispatcher
+from .browser import BrowserManager
+from .charting import ChartService
+from .config import Settings
+from .db import Database
+from .marketplaces import OzonClient, WildberriesClient, YandexMarketClient
+from .monitoring import MonitoringService
+
+
+async def run() -> None:
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s %(message)s",
+    )
+    settings = Settings.load()
+    db = Database(settings.db_path)
+    await db.init()
+
+    bot = Bot(settings.bot_token)
+    browser = BrowserManager(
+        timeout_seconds=settings.request_timeout_seconds,
+        headless=settings.playwright_headless,
+    )
+    charts_dir = Path("data/charts")
+    clients = []
+    if settings.wb_enabled:
+        clients.append(WildberriesClient(browser, settings.request_timeout_seconds, settings.marketplace_max_pages))
+    if settings.ozon_enabled:
+        clients.append(OzonClient(browser, settings.request_timeout_seconds, settings.marketplace_max_pages))
+    if settings.yandex_market_enabled:
+        clients.append(YandexMarketClient(browser, settings.request_timeout_seconds, settings.marketplace_max_pages))
+
+    monitoring = MonitoringService(
+        db=db,
+        bot=bot,
+        marketplace_clients=clients,
+        poll_interval_seconds=settings.poll_interval_seconds,
+    )
+    dp = build_dispatcher(
+        db=db,
+        monitoring=monitoring,
+        chart_service=ChartService(charts_dir),
+        charts_dir=charts_dir,
+    )
+
+    monitoring.start()
+    try:
+        await dp.start_polling(bot)
+    finally:
+        await monitoring.stop()
+        await browser.stop()
+        await bot.session.close()
+
+
+def main() -> None:
+    asyncio.run(run())
+
+
+if __name__ == "__main__":
+    main()
