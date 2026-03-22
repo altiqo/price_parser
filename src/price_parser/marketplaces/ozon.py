@@ -28,6 +28,12 @@ class OzonClient(MarketplaceClient):
             try:
                 await self._safe_scroll(page)
                 if 'captcha' in page.url.lower() or '/api/composer-api.bx/page/json/' in page.url.lower():
+                    await self._capture_debug_page(
+                        page,
+                        query=query,
+                        page_num=page_num,
+                        reason='blocked',
+                    )
                     raise MarketplaceError('маркетплейс временно заблокировал браузерную сессию')
                 items = await page.evaluate(
                     """
@@ -43,12 +49,24 @@ class OzonClient(MarketplaceClient):
                       })
                     """
                 )
+                if items:
+                    page_offers = self._extract_items(items, query)
+                    if page_num == 1 or not page_offers:
+                        await self._capture_debug_page(
+                            page,
+                            query=query,
+                            page_num=page_num,
+                            reason='first_page' if page_num == 1 else 'no_offers',
+                            raw_items=items,
+                            parsed_offers=len(page_offers),
+                        )
+                else:
+                    page_offers = []
             finally:
                 await self._browser.close_context(context)
 
             if not items:
                 break
-            page_offers = self._extract_items(items, query)
             offers.extend(page_offers)
 
         offers = deduplicate_offers(offers)

@@ -28,6 +28,10 @@ async def run() -> None:
     browser = BrowserManager(
         timeout_seconds=settings.request_timeout_seconds,
         headless=settings.playwright_headless,
+        debug_capture_enabled=settings.debug_capture_enabled,
+        debug_capture_dir=settings.debug_capture_dir,
+        debug_capture_html=settings.debug_capture_html,
+        debug_capture_screenshot=settings.debug_capture_screenshot,
     )
     charts_dir = Path("data/charts")
     clients = []

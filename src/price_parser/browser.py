@@ -1,14 +1,30 @@
 ﻿from __future__ import annotations
 
 import contextlib
+import json
+import re
+from datetime import datetime, timezone
+from pathlib import Path
 
 from playwright.async_api import Browser, BrowserContext, Page, Playwright, TimeoutError, async_playwright
 
 
 class BrowserManager:
-    def __init__(self, timeout_seconds: int, headless: bool = True) -> None:
+    def __init__(
+        self,
+        timeout_seconds: int,
+        headless: bool = True,
+        debug_capture_enabled: bool = False,
+        debug_capture_dir: Path | None = None,
+        debug_capture_html: bool = True,
+        debug_capture_screenshot: bool = True,
+    ) -> None:
         self._timeout_ms = timeout_seconds * 1000
         self._headless = headless
+        self._debug_capture_enabled = debug_capture_enabled
+        self._debug_capture_dir = debug_capture_dir or Path("data/debug")
+        self._debug_capture_html = debug_capture_html
+        self._debug_capture_screenshot = debug_capture_screenshot
         self._playwright: Playwright | None = None
         self._browser: Browser | None = None
 
@@ -55,3 +71,53 @@ class BrowserManager:
 
     async def close_context(self, context: BrowserContext) -> None:
         await context.close()
+
+    async def capture_debug_artifacts(
+        self,
+        page: Page,
+        *,
+        marketplace: str,
+        query: str,
+        page_num: int,
+        reason: str,
+        metadata: dict | None = None,
+    ) -> None:
+        if not self._debug_capture_enabled:
+            return
+
+        target_dir = self._debug_capture_dir / self._slugify(marketplace)
+        target_dir.mkdir(parents=True, exist_ok=True)
+        stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+        query_slug = self._slugify(query)[:80] or "query"
+        reason_slug = self._slugify(reason)[:40] or "capture"
+        basename = f"{stamp}_p{page_num:02d}_{reason_slug}_{query_slug}"
+
+        payload = {
+            "captured_at_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            "marketplace": marketplace,
+            "query": query,
+            "page_num": page_num,
+            "reason": reason,
+            "url": page.url,
+        }
+        if metadata:
+            payload.update(metadata)
+
+        metadata_path = target_dir / f"{basename}.json"
+        metadata_path.write_text(
+            json.dumps(payload, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+
+        if self._debug_capture_html:
+            html_path = target_dir / f"{basename}.html"
+            html_path.write_text(await page.content(), encoding="utf-8")
+
+        if self._debug_capture_screenshot:
+            screenshot_path = target_dir / f"{basename}.png"
+            await page.screenshot(path=str(screenshot_path), full_page=True)
+
+    @staticmethod
+    def _slugify(value: str) -> str:
+        normalized = re.sub(r"[^a-zA-Z0-9а-яА-Я_-]+", "_", value.strip())
+        return normalized.strip("_").lower() or "debug"

@@ -19,6 +19,8 @@ class SettingsTest(unittest.TestCase):
                 "DAILY_REPORT_ENABLED": "true",
                 "DAILY_REPORT_TIME": "09:00",
                 "SCHEDULE_TIMEZONE": "Europe/Moscow",
+                "DEBUG_CAPTURE_ENABLED": "true",
+                "DEBUG_CAPTURE_DIR": str(Path(temp_dir) / "debug"),
             }
             with patch.dict(os.environ, env, clear=True):
                 settings = Settings.load()
@@ -27,6 +29,8 @@ class SettingsTest(unittest.TestCase):
         self.assertTrue(settings.daily_report_enabled)
         self.assertEqual(settings.daily_report_time.strftime("%H:%M"), "09:00")
         self.assertEqual(settings.schedule_timezone.key, "Europe/Moscow")
+        self.assertTrue(settings.debug_capture_enabled)
+        self.assertEqual(settings.debug_capture_dir, Path(temp_dir) / "debug")
 
     def test_load_rejects_too_small_poll_interval(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

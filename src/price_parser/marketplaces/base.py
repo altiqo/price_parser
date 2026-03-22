@@ -1,6 +1,7 @@
 ﻿from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import Sized
 
 from playwright.async_api import Page
 
@@ -43,6 +44,28 @@ class MarketplaceClient(ABC):
 
     async def _load_page(self, url: str):
         return await self._browser.load_page(url)
+
+    async def _capture_debug_page(
+        self,
+        page: Page,
+        *,
+        query: str,
+        page_num: int,
+        reason: str,
+        raw_items: Sized | None = None,
+        parsed_offers: int | None = None,
+    ) -> None:
+        await self._browser.capture_debug_artifacts(
+            page,
+            marketplace=self.marketplace.value,
+            query=query,
+            page_num=page_num,
+            reason=reason,
+            metadata={
+                "raw_items_count": len(raw_items) if raw_items is not None else None,
+                "parsed_offers_count": parsed_offers,
+            },
+        )
 
     @staticmethod
     def _clean_text(value: str | None) -> str:

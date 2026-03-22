@@ -60,6 +60,10 @@ class Settings:
     daily_report_enabled: bool = True
     daily_report_time: time = time(hour=9, minute=0)
     schedule_timezone: ZoneInfo = ZoneInfo("Europe/Moscow")
+    debug_capture_enabled: bool = False
+    debug_capture_dir: Path = Path("data/debug")
+    debug_capture_html: bool = True
+    debug_capture_screenshot: bool = True
 
     @classmethod
     def load(cls) -> "Settings":
@@ -83,4 +87,8 @@ class Settings:
             daily_report_enabled=_get_bool("DAILY_REPORT_ENABLED", True),
             daily_report_time=_get_time("DAILY_REPORT_TIME", "09:00"),
             schedule_timezone=_get_timezone("SCHEDULE_TIMEZONE", "Europe/Moscow"),
+            debug_capture_enabled=_get_bool("DEBUG_CAPTURE_ENABLED", False),
+            debug_capture_dir=Path(os.getenv("DEBUG_CAPTURE_DIR", "data/debug").strip() or "data/debug"),
+            debug_capture_html=_get_bool("DEBUG_CAPTURE_HTML", True),
+            debug_capture_screenshot=_get_bool("DEBUG_CAPTURE_SCREENSHOT", True),
         )
