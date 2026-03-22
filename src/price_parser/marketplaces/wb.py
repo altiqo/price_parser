@@ -12,6 +12,9 @@ _PRICE_RE = re.compile(r'(\d[\d\s\u2009]{2,12})\s?[₽р]')
 
 class WildberriesClient(MarketplaceClient):
     marketplace = Marketplace.WB
+    unavailable_markers = MarketplaceClient.unavailable_markers + (
+        "скоро закончится",
+    )
 
     async def search(self, query: str) -> list[Offer]:
         base_url = get_overridden_url(query, self.marketplace.value) or (
@@ -41,14 +44,14 @@ class WildberriesClient(MarketplaceClient):
             finally:
                 await self._browser.close_context(context)
 
-            page_offers = self._extract_cards(cards, query)
-            if not page_offers:
+            if not cards:
                 break
+            page_offers = self._extract_cards(cards, query)
             offers.extend(page_offers)
 
         offers = deduplicate_offers(offers)
         if not offers:
-            raise MarketplaceError("Wildberries returned no parsable offers")
+            raise MarketplaceError("нет доступных предложений")
         return offers
 
     def _extract_cards(self, cards: list[dict], query: str) -> list[Offer]:
@@ -71,6 +74,7 @@ class WildberriesClient(MarketplaceClient):
                     price=price,
                     currency='RUB',
                     url=clean_marketplace_url(href, self.marketplace.value),
+                    is_available=True,
                 )
             )
         return offers
@@ -93,16 +97,3 @@ class WildberriesClient(MarketplaceClient):
                 if price >= 500:
                     candidates.append(price)
         return min(candidates) if candidates else None
-
-
-    def _looks_unavailable(self, text: str) -> bool:
-        lowered = self._clean_text(text).lower()
-        markers = (
-            "\u043d\u0435\u0442 \u0432 \u043d\u0430\u043b\u0438\u0447\u0438\u0438",
-            "\u0437\u0430\u043a\u043e\u043d\u0447\u0438\u043b\u0441\u044f",
-            "\u0441\u043a\u043e\u0440\u043e \u0437\u0430\u043a\u043e\u043d\u0447\u0438\u0442\u0441\u044f",
-            "\u0443\u0432\u0435\u0434\u043e\u043c\u0438\u0442\u044c \u043e \u043f\u043e\u0441\u0442\u0443\u043f\u043b\u0435\u043d\u0438\u0438",
-            "\u043d\u0435\u0442 \u0434\u043e\u0441\u0442\u0430\u0432\u043a\u0438",
-            "\u0440\u0430\u0441\u043f\u0440\u043e\u0434\u0430\u043d",
-        )
-        return any(marker in lowered for marker in markers)

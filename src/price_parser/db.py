@@ -49,7 +49,67 @@ class Database:
                     ON track_targets(chat_id);
                 CREATE INDEX IF NOT EXISTS idx_price_snapshots_target_id_captured_at
                     ON price_snapshots(target_id, captured_at);
+
+                CREATE TABLE IF NOT EXISTS app_settings (
+                    key TEXT PRIMARY KEY,
+                    value TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS chat_settings (
+                    chat_id INTEGER NOT NULL,
+                    key TEXT NOT NULL,
+                    value TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    PRIMARY KEY(chat_id, key)
+                );
                 """
+            )
+            await db.commit()
+
+    async def get_app_setting(self, key: str) -> str | None:
+        async with aiosqlite.connect(self._db_path) as db:
+            cursor = await db.execute(
+                "SELECT value FROM app_settings WHERE key = ?",
+                (key,),
+            )
+            row = await cursor.fetchone()
+        return str(row[0]) if row else None
+
+    async def set_app_setting(self, key: str, value: str) -> None:
+        async with aiosqlite.connect(self._db_path) as db:
+            await db.execute(
+                """
+                INSERT INTO app_settings(key, value, updated_at)
+                VALUES (?, ?, ?)
+                ON CONFLICT(key) DO UPDATE SET
+                    value = excluded.value,
+                    updated_at = excluded.updated_at
+                """,
+                (key, value, _utcnow()),
+            )
+            await db.commit()
+
+    async def get_chat_setting(self, chat_id: int, key: str) -> str | None:
+        async with aiosqlite.connect(self._db_path) as db:
+            cursor = await db.execute(
+                "SELECT value FROM chat_settings WHERE chat_id = ? AND key = ?",
+                (chat_id, key),
+            )
+            row = await cursor.fetchone()
+        return str(row[0]) if row else None
+
+    async def set_chat_setting(self, chat_id: int, key: str, value: str) -> None:
+        async with aiosqlite.connect(self._db_path) as db:
+            await db.execute(
+                """
+                INSERT INTO chat_settings(chat_id, key, value, updated_at)
+                VALUES (?, ?, ?, ?)
+                ON CONFLICT(chat_id, key) DO UPDATE SET
+                    value = excluded.value,
+                    updated_at = excluded.updated_at
+                """,
+                (chat_id, key, value, _utcnow()),
             )
             await db.commit()
 

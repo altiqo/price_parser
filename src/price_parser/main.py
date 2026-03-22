@@ -43,7 +43,11 @@ async def run() -> None:
         bot=bot,
         marketplace_clients=clients,
         poll_interval_seconds=settings.poll_interval_seconds,
+        daily_report_enabled=settings.daily_report_enabled,
+        daily_report_time=settings.daily_report_time,
+        schedule_timezone=settings.schedule_timezone,
     )
+    await monitoring.load_schedule_settings()
     dp = build_dispatcher(
         db=db,
         monitoring=monitoring,

@@ -14,6 +14,18 @@ class MarketplaceError(RuntimeError):
 
 class MarketplaceClient(ABC):
     marketplace: Marketplace
+    unavailable_markers: tuple[str, ...] = (
+        "нет в наличии",
+        "нет в продаже",
+        "нет доставки",
+        "не доставляется",
+        "временно нет",
+        "распродан",
+        "закончился",
+        "уведомить о поступлении",
+        "sold out",
+        "out of stock",
+    )
 
     def __init__(
         self,
@@ -48,3 +60,7 @@ class MarketplaceClient(ABC):
             }
             """
         )
+
+    def _looks_unavailable(self, text: str) -> bool:
+        lowered = self._clean_text(text).lower()
+        return any(marker in lowered for marker in self.unavailable_markers)

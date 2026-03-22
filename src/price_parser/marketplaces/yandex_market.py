@@ -19,6 +19,12 @@ _PRICE_RE = re.compile(r'(\d[\d\s\u2009]{2,12})\s?[₽р]')
 
 class YandexMarketClient(MarketplaceClient):
     marketplace = Marketplace.YANDEX_MARKET
+    unavailable_markers = MarketplaceClient.unavailable_markers + (
+        "нет предложений",
+        "нет в магазине",
+        "нет на маркете",
+        "не продается",
+    )
 
     async def search(self, query: str) -> list[Offer]:
         base_url = get_overridden_url(query, self.marketplace.value) or f"https://market.yandex.ru/search?text={quote_plus(query)}"
@@ -45,14 +51,14 @@ class YandexMarketClient(MarketplaceClient):
             finally:
                 await self._browser.close_context(context)
 
-            page_offers = self._extract_items(items, query)
-            if not page_offers:
+            if not items:
                 break
+            page_offers = self._extract_items(items, query)
             offers.extend(page_offers)
 
         offers = deduplicate_offers(offers)
         if not offers:
-            raise MarketplaceError('Yandex Market returned no parsable offers')
+            raise MarketplaceError('нет доступных предложений')
         return offers
 
     def _extract_items(self, items: list[dict], query: str) -> list[Offer]:
@@ -65,6 +71,8 @@ class YandexMarketClient(MarketplaceClient):
                 continue
             if not url_matches_query_model(href, query):
                 continue
+            if self._looks_unavailable(text):
+                continue
             price = self._extract_price(text)
             if price is None:
                 continue
@@ -75,6 +83,7 @@ class YandexMarketClient(MarketplaceClient):
                     price=price,
                     currency='RUB',
                     url=clean_marketplace_url(href, self.marketplace.value),
+                    is_available=True,
                 )
             )
         return offers

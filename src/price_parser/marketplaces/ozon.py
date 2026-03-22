@@ -12,6 +12,12 @@ _PRICE_RE = re.compile(r'(\d[\d\s\u2009]{2,12})\s?[₽р]')
 
 class OzonClient(MarketplaceClient):
     marketplace = Marketplace.OZON
+    unavailable_markers = MarketplaceClient.unavailable_markers + (
+        "нет товара",
+        "нет на складе",
+        "нет предложений",
+        "не удалось найти товар",
+    )
 
     async def search(self, query: str) -> list[Offer]:
         base_url = get_overridden_url(query, self.marketplace.value) or f"https://www.ozon.ru/search/?text={quote_plus(query)}"
@@ -22,7 +28,7 @@ class OzonClient(MarketplaceClient):
             try:
                 await self._safe_scroll(page)
                 if 'captcha' in page.url.lower() or '/api/composer-api.bx/page/json/' in page.url.lower():
-                    raise MarketplaceError('Ozon blocked the browser session')
+                    raise MarketplaceError('маркетплейс временно заблокировал браузерную сессию')
                 items = await page.evaluate(
                     """
                     () => Array.from(document.querySelectorAll("a[href*='/product/']"))
@@ -40,14 +46,14 @@ class OzonClient(MarketplaceClient):
             finally:
                 await self._browser.close_context(context)
 
-            page_offers = self._extract_items(items, query)
-            if not page_offers:
+            if not items:
                 break
+            page_offers = self._extract_items(items, query)
             offers.extend(page_offers)
 
         offers = deduplicate_offers(offers)
         if not offers:
-            raise MarketplaceError('Ozon returned no parsable offers')
+            raise MarketplaceError('нет доступных предложений')
         return offers
 
     def _extract_items(self, items: list[dict], query: str) -> list[Offer]:
@@ -57,6 +63,8 @@ class OzonClient(MarketplaceClient):
             title = payload['title']
             text = payload['text']
             if not href or not title or not title_matches_query(title, query):
+                continue
+            if self._looks_unavailable(text):
                 continue
             price = self._extract_price(text)
             if price is None:
@@ -68,6 +76,7 @@ class OzonClient(MarketplaceClient):
                     price=price,
                     currency='RUB',
                     url=clean_marketplace_url(href, self.marketplace.value),
+                    is_available=True,
                 )
             )
         return offers

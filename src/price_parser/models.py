@@ -20,6 +20,7 @@ class Offer:
     url: str
     seller: str | None = None
     image_url: str | None = None
+    is_available: bool = True
 
 
 @dataclass(slots=True)
