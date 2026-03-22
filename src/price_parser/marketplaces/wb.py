@@ -41,19 +41,25 @@ class WildberriesClient(MarketplaceClient):
                       })
                     """
                 )
-                if cards:
-                    page_offers = self._extract_cards(cards, query)
-                    if page_num == 1 or not page_offers:
-                        await self._capture_debug_page(
-                            page,
-                            query=query,
-                            page_num=page_num,
-                            reason='first_page' if page_num == 1 else 'no_offers',
-                            raw_items=cards,
-                            parsed_offers=len(page_offers),
-                        )
-                else:
-                    page_offers = []
+                page_offers = self._extract_cards(cards, query) if cards else []
+                if not cards:
+                    await self._capture_debug_page(
+                        page,
+                        query=query,
+                        page_num=page_num,
+                        reason='empty_page',
+                        raw_items=cards,
+                        parsed_offers=0,
+                    )
+                elif page_num == 1 or not page_offers:
+                    await self._capture_debug_page(
+                        page,
+                        query=query,
+                        page_num=page_num,
+                        reason='first_page' if page_num == 1 else 'no_offers',
+                        raw_items=cards,
+                        parsed_offers=len(page_offers),
+                    )
             finally:
                 await self._browser.close_context(context)
 
