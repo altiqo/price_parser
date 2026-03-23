@@ -21,6 +21,9 @@ class SettingsTest(unittest.TestCase):
                 "SCHEDULE_TIMEZONE": "Europe/Moscow",
                 "DEBUG_CAPTURE_ENABLED": "true",
                 "DEBUG_CAPTURE_DIR": str(Path(temp_dir) / "debug"),
+                "MARKETPLACE_PROXY_SERVER": "http://84.53.245.42:41258",
+                "MARKETPLACE_PROXY_USERNAME": "user",
+                "MARKETPLACE_PROXY_PASSWORD": "pass",
             }
             with patch.dict(os.environ, env, clear=True):
                 settings = Settings.load()
@@ -31,6 +34,9 @@ class SettingsTest(unittest.TestCase):
         self.assertEqual(settings.schedule_timezone.key, "Europe/Moscow")
         self.assertTrue(settings.debug_capture_enabled)
         self.assertEqual(settings.debug_capture_dir, Path(temp_dir) / "debug")
+        self.assertEqual(settings.marketplace_proxy_server, "http://84.53.245.42:41258")
+        self.assertEqual(settings.marketplace_proxy_username, "user")
+        self.assertEqual(settings.marketplace_proxy_password, "pass")
 
     def test_load_rejects_too_small_poll_interval(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

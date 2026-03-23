@@ -18,6 +18,9 @@ class BrowserManager:
         debug_capture_dir: Path | None = None,
         debug_capture_html: bool = True,
         debug_capture_screenshot: bool = True,
+        proxy_server: str | None = None,
+        proxy_username: str | None = None,
+        proxy_password: str | None = None,
     ) -> None:
         self._timeout_ms = timeout_seconds * 1000
         self._headless = headless
@@ -25,6 +28,9 @@ class BrowserManager:
         self._debug_capture_dir = debug_capture_dir or Path("data/debug")
         self._debug_capture_html = debug_capture_html
         self._debug_capture_screenshot = debug_capture_screenshot
+        self._proxy_server = proxy_server
+        self._proxy_username = proxy_username
+        self._proxy_password = proxy_password
         self._playwright: Playwright | None = None
         self._browser: Browser | None = None
 
@@ -32,13 +38,23 @@ class BrowserManager:
         if self._browser is not None:
             return
         self._playwright = await async_playwright().start()
-        self._browser = await self._playwright.chromium.launch(
-            headless=self._headless,
-            args=[
+        launch_options: dict = {
+            "headless": self._headless,
+            "args": [
                 '--disable-blink-features=AutomationControlled',
                 '--disable-dev-shm-usage',
                 '--no-sandbox',
             ],
+        }
+        if self._proxy_server:
+            proxy = {"server": self._proxy_server}
+            if self._proxy_username:
+                proxy["username"] = self._proxy_username
+            if self._proxy_password:
+                proxy["password"] = self._proxy_password
+            launch_options["proxy"] = proxy
+        self._browser = await self._playwright.chromium.launch(
+            **launch_options,
         )
 
     async def stop(self) -> None:

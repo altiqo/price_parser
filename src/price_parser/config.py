@@ -64,6 +64,9 @@ class Settings:
     debug_capture_dir: Path = Path("data/debug")
     debug_capture_html: bool = True
     debug_capture_screenshot: bool = True
+    marketplace_proxy_server: str | None = None
+    marketplace_proxy_username: str | None = None
+    marketplace_proxy_password: str | None = None
 
     @classmethod
     def load(cls) -> "Settings":
@@ -91,4 +94,7 @@ class Settings:
             debug_capture_dir=Path(os.getenv("DEBUG_CAPTURE_DIR", "data/debug").strip() or "data/debug"),
             debug_capture_html=_get_bool("DEBUG_CAPTURE_HTML", True),
             debug_capture_screenshot=_get_bool("DEBUG_CAPTURE_SCREENSHOT", True),
+            marketplace_proxy_server=os.getenv("MARKETPLACE_PROXY_SERVER", "").strip() or None,
+            marketplace_proxy_username=os.getenv("MARKETPLACE_PROXY_USERNAME", "").strip() or None,
+            marketplace_proxy_password=os.getenv("MARKETPLACE_PROXY_PASSWORD", "").strip() or None,
         )
