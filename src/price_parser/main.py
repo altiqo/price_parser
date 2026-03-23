@@ -32,6 +32,7 @@ async def run() -> None:
         debug_capture_dir=settings.debug_capture_dir,
         debug_capture_html=settings.debug_capture_html,
         debug_capture_screenshot=settings.debug_capture_screenshot,
+        proxy_servers=settings.marketplace_proxy_servers,
         proxy_server=settings.marketplace_proxy_server,
         proxy_username=settings.marketplace_proxy_username,
         proxy_password=settings.marketplace_proxy_password,

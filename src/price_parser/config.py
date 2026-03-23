@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import os
 from dataclasses import dataclass
@@ -45,6 +45,42 @@ def _get_timezone(name: str, default: str) -> ZoneInfo:
         raise RuntimeError(f"{name} contains an unknown timezone: {raw}") from exc
 
 
+def _normalize_proxy_server(raw: str) -> str:
+    value = raw.strip()
+    if not value:
+        return ""
+    if "://" not in value:
+        value = f"http://{value}"
+    return value
+
+
+def _get_proxy_servers() -> tuple[str, ...]:
+    values: list[str] = []
+
+    raw_inline = os.getenv("MARKETPLACE_PROXY_SERVERS", "")
+    if raw_inline.strip():
+        for chunk in raw_inline.replace(",", "\n").splitlines():
+            normalized = _normalize_proxy_server(chunk)
+            if normalized and normalized not in values:
+                values.append(normalized)
+
+    raw_file = os.getenv("MARKETPLACE_PROXY_SERVERS_FILE", "").strip()
+    if raw_file:
+        path = Path(raw_file)
+        if not path.exists():
+            raise RuntimeError(f"MARKETPLACE_PROXY_SERVERS_FILE not found: {path}")
+        for chunk in path.read_text(encoding="utf-8").splitlines():
+            normalized = _normalize_proxy_server(chunk)
+            if normalized and normalized not in values:
+                values.append(normalized)
+
+    legacy_single = _normalize_proxy_server(os.getenv("MARKETPLACE_PROXY_SERVER", ""))
+    if legacy_single and legacy_single not in values:
+        values.append(legacy_single)
+
+    return tuple(values)
+
+
 @dataclass(slots=True)
 class Settings:
     bot_token: str
@@ -64,6 +100,7 @@ class Settings:
     debug_capture_dir: Path = Path("data/debug")
     debug_capture_html: bool = True
     debug_capture_screenshot: bool = True
+    marketplace_proxy_servers: tuple[str, ...] = ()
     marketplace_proxy_server: str | None = None
     marketplace_proxy_username: str | None = None
     marketplace_proxy_password: str | None = None
@@ -94,6 +131,7 @@ class Settings:
             debug_capture_dir=Path(os.getenv("DEBUG_CAPTURE_DIR", "data/debug").strip() or "data/debug"),
             debug_capture_html=_get_bool("DEBUG_CAPTURE_HTML", True),
             debug_capture_screenshot=_get_bool("DEBUG_CAPTURE_SCREENSHOT", True),
+            marketplace_proxy_servers=_get_proxy_servers(),
             marketplace_proxy_server=os.getenv("MARKETPLACE_PROXY_SERVER", "").strip() or None,
             marketplace_proxy_username=os.getenv("MARKETPLACE_PROXY_USERNAME", "").strip() or None,
             marketplace_proxy_password=os.getenv("MARKETPLACE_PROXY_PASSWORD", "").strip() or None,
