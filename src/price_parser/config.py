@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
-from datetime import time
+from datetime import time, timezone, tzinfo
 from pathlib import Path
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -37,12 +37,19 @@ def _get_time(name: str, default: str) -> time:
     return time(hour=hour, minute=minute)
 
 
-def _get_timezone(name: str, default: str) -> ZoneInfo:
+def _get_timezone(name: str, default: str) -> tzinfo:
     raw = os.getenv(name, default).strip() or default
     try:
         return ZoneInfo(raw)
-    except ZoneInfoNotFoundError as exc:
-        raise RuntimeError(f"{name} contains an unknown timezone: {raw}") from exc
+    except ZoneInfoNotFoundError:
+        return timezone.utc
+
+
+def _default_timezone() -> tzinfo:
+    try:
+        return ZoneInfo("Europe/Moscow")
+    except ZoneInfoNotFoundError:
+        return timezone.utc
 
 
 def _normalize_proxy_server(raw: str) -> str:
@@ -95,7 +102,7 @@ class Settings:
     playwright_headless: bool = True
     daily_report_enabled: bool = True
     daily_report_time: time = time(hour=9, minute=0)
-    schedule_timezone: ZoneInfo = ZoneInfo("Europe/Moscow")
+    schedule_timezone: tzinfo = _default_timezone()
     debug_capture_enabled: bool = False
     debug_capture_dir: Path = Path("data/debug")
     debug_capture_html: bool = True

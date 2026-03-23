@@ -7,10 +7,8 @@ import time
 from collections import defaultdict
 from collections.abc import Iterable
 from dataclasses import dataclass
-from datetime import date, datetime, time as dt_time
+from datetime import date, datetime, time as dt_time, tzinfo
 from html import escape
-from zoneinfo import ZoneInfo
-
 from aiogram import Bot
 from aiogram.enums import ParseMode
 
@@ -40,7 +38,7 @@ class MonitoringService:
         poll_interval_seconds: int,
         daily_report_enabled: bool,
         daily_report_time: dt_time,
-        schedule_timezone: ZoneInfo,
+        schedule_timezone: tzinfo,
     ) -> None:
         self._db = db
         self._bot = bot
@@ -287,7 +285,7 @@ class MonitoringService:
             poll_interval_seconds=poll_interval_seconds,
             daily_report_enabled=daily_report_enabled,
             daily_report_time=daily_report_time,
-            schedule_timezone=self._schedule_timezone.key,
+            schedule_timezone=getattr(self._schedule_timezone, "key", "UTC"),
         )
 
     def _should_run_monitoring(
